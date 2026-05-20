@@ -89,11 +89,17 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var origins = builder.Configuration["AllowedOrigins"]?.Split(',')
-            ?? new[] { "http://localhost:5173", "https://volunternegos.netlify.app" };
-        policy.WithOrigins(origins)
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        var originsConfig = builder.Configuration["AllowedOrigins"];
+        if (!string.IsNullOrWhiteSpace(originsConfig) && originsConfig != "*")
+        {
+            var origins = originsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            // Allow all origins (dev / initial deploy)
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
     }));
 
 var app = builder.Build();

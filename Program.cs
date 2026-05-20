@@ -164,14 +164,13 @@ try
 
         if (usePostgres || useSqlite)
         {
-            // EnsureCreated works for PostgreSQL/SQLite — creates tables from model
-            // without needing SQL Server-specific migration scripts
+            // Delete and recreate — wipes __EFMigrationsHistory so EnsureCreated works
+            migrationDb.Database.EnsureDeleted();
             migrationDb.Database.EnsureCreated();
             logger.LogInformation("Database tables created via EnsureCreated.");
         }
         else
         {
-            // SQL Server — use migrations as normal
             migrationDb.Database.Migrate();
             logger.LogInformation("Migration completed successfully.");
         }

@@ -113,7 +113,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ---------------------------------------------------------------------------
-// Startup: migrate + seed
+// Startup: migrate + seed (non-fatal — app starts even if DB is unavailable)
 // ---------------------------------------------------------------------------
 try
 {
@@ -124,8 +124,8 @@ try
     try { db.Database.Migrate(); }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "Database migration failed. Verify the connection string.");
-        throw;
+        logger.LogCritical(ex, "Database migration failed. App will start anyway — login uses hardcoded credentials.");
+        // Do NOT throw — app continues without DB, hardcoded login still works
     }
 
     // -----------------------------------------------------------------------

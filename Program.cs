@@ -174,14 +174,17 @@ try
     if (staleAdmins.Any()) { db.AdminUsers.RemoveRange(staleAdmins); db.SaveChanges(); }
 
     // -----------------------------------------------------------------------
-    // Admin accounts — FIXED credentials, reset on every startup.
-    //   SuperAdmin : Negos    / Negos@123    (TenantId=0, Role=SuperAdmin)
-    //   Backup     : NegosBk  / NegosBk@2026 (TenantId=0, Role=SuperAdmin)
-    //   Tenant 1 admin is the same SuperAdmin for now.
+    // ALL Admin accounts — FIXED credentials, reset on every startup.
+    // SuperAdmin : Negos      / Negos@123     (TenantId=0)
+    // SuperAdmin : NegosBk    / NegosBk@2026  (TenantId=0)
+    // Tenant 1   : admin_diyalo   / Diyalo@123    (TenantId=1)
+    // Tenant 2   : admin_volunteer / Volunteer@123 (TenantId=2)
+    // Tenant 3   : admin_nepalhelp / NepalHelp@123 (TenantId=3)
     // -----------------------------------------------------------------------
-    const string primaryHash = "$2a$11$d2otSTC/OPK.lifVGrU0iuqLja245JkNirM92Vp7l7kbfKN3ArUcy";
-    const string backupHash  = "$2a$11$EewzvCHCXARXpWrEFtkVWuew7MyK8bS0qOCma96ZCY7tozIGNc4Dm";
+    const string primaryHash    = "$2a$11$d2otSTC/OPK.lifVGrU0iuqLja245JkNirM92Vp7l7kbfKN3ArUcy";
+    const string backupHash     = "$2a$11$EewzvCHCXARXpWrEFtkVWuew7MyK8bS0qOCma96ZCY7tozIGNc4Dm";
 
+    // SuperAdmin accounts
     var primary = db.AdminUsers.FirstOrDefault(u => u.Username == "Negos");
     if (primary == null)
         db.AdminUsers.Add(new AdminUser { Username = "Negos", PasswordHash = primaryHash, TenantId = 0, Role = "SuperAdmin" });
@@ -193,6 +196,26 @@ try
         db.AdminUsers.Add(new AdminUser { Username = "NegosBk", PasswordHash = backupHash, TenantId = 0, Role = "SuperAdmin" });
     else
     { backup.PasswordHash = backupHash; backup.Role = "SuperAdmin"; backup.TenantId = 0; }
+
+    db.SaveChanges();
+
+    // Tenant admin accounts — always upsert with correct password
+    var tenantAdmins = new[]
+    {
+        new { Username = "admin_diyalo",    Password = "Diyalo@123",    TenantId = 1 },
+        new { Username = "admin_volunteer", Password = "Volunteer@123", TenantId = 2 },
+        new { Username = "admin_nepalhelp", Password = "NepalHelp@123", TenantId = 3 },
+    };
+
+    foreach (var ta in tenantAdmins)
+    {
+        var hash = BCrypt.Net.BCrypt.HashPassword(ta.Password);
+        var existing = db.AdminUsers.FirstOrDefault(u => u.Username == ta.Username);
+        if (existing == null)
+            db.AdminUsers.Add(new AdminUser { Username = ta.Username, PasswordHash = hash, TenantId = ta.TenantId, Role = "Admin" });
+        else
+        { existing.PasswordHash = hash; existing.Role = "Admin"; existing.TenantId = ta.TenantId; }
+    }
 
     db.SaveChanges();
 

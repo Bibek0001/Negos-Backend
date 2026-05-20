@@ -50,6 +50,14 @@ var useSqlite   = !usePostgres && (
                  || connStr.EndsWith(".db",     StringComparison.OrdinalIgnoreCase)
                  || connStr.EndsWith(".sqlite",  StringComparison.OrdinalIgnoreCase));
 
+// Convert postgres:// URL format to Npgsql connection string format
+if (usePostgres && (connStr.StartsWith("postgres://") || connStr.StartsWith("postgresql://")))
+{
+    var uri = new Uri(connStr.Replace("postgresql://", "postgres://"));
+    var userInfo = uri.UserInfo.Split(':');
+    connStr = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if      (usePostgres) options.UseNpgsql(connStr);

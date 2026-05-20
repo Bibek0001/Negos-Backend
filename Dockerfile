@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet publish Diyalo.Api.csproj -c Release -o /app/publish
+RUN dotnet publish Diyalo.Api.csproj -c Release -o /app/publish /p:PublishReact=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app

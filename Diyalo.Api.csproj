@@ -21,8 +21,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
   </ItemGroup>
 
-  <!-- Copy frontend build output to wwwroot on publish -->
-  <Target Name="PublishReact" AfterTargets="ComputeFilesToPublish">
+  <!-- Copy frontend build output to wwwroot on publish (local only, skip in Docker) -->
+  <Target Name="PublishReact" AfterTargets="ComputeFilesToPublish" Condition="'$(PublishReact)' != 'false' AND Exists('$(SpaRoot)package.json')">
     <Exec Command="npm run build" WorkingDirectory="$(SpaRoot)" />
     <ItemGroup>
       <DistFiles Include="$(SpaRoot)dist\**\*.*" />

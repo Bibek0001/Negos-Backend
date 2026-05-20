@@ -150,8 +150,8 @@ try
     try { db.Database.Migrate(); }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "Database migration failed. App will start anyway — login uses hardcoded credentials.");
-        // Do NOT throw — app continues without DB, hardcoded login still works
+        logger.LogCritical(ex, "Database migration failed. Verify connection string.");
+        throw; // Let it crash so we can see the real error in logs
     }
 
     // -----------------------------------------------------------------------

@@ -160,14 +160,25 @@ try
         else if (useSqlite) migrationOptions.UseSqlite(connStr);
         else migrationOptions.UseSqlServer(connStr);
         using var migrationDb = new AppDbContext(migrationOptions.Options);
-        logger.LogInformation("Starting database migration...");
-        migrationDb.Database.Migrate();
-        logger.LogInformation("Migration completed successfully.");
+        logger.LogInformation("Starting database setup...");
+
+        if (usePostgres || useSqlite)
+        {
+            // EnsureCreated works for PostgreSQL/SQLite — creates tables from model
+            // without needing SQL Server-specific migration scripts
+            migrationDb.Database.EnsureCreated();
+            logger.LogInformation("Database tables created via EnsureCreated.");
+        }
+        else
+        {
+            // SQL Server — use migrations as normal
+            migrationDb.Database.Migrate();
+            logger.LogInformation("Migration completed successfully.");
+        }
     }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "Database migration failed — app continues with hardcoded login.");
-        // Non-fatal: app starts, hardcoded credentials still work
+        logger.LogCritical(ex, "Database setup failed — app continues with hardcoded login.");
     }
 
     // -----------------------------------------------------------------------

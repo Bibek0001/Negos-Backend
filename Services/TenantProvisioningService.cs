@@ -14,6 +14,64 @@ public class TenantProvisioningService
 
     public TenantProvisioningService(AppDbContext db) => _db = db;
 
+    public async Task SeedContentIfMissingAsync(Tenant tenant)
+    {
+        var tid  = tenant.Id;
+        var name = tenant.Name;
+
+        // Programs
+        if (!_db.Programs.Any(p => p.TenantId == tid))
+        {
+            _db.Programs.AddRange(
+                new VolunteerProgram { TenantId = tid, Title = "Teaching Volunteer",       Category = "Volunteering",     IsVisible = true, Order = 1, Description = "Teach English, Math and Science to children in schools across Nepal. Make a real difference in the lives of students who need quality education." },
+                new VolunteerProgram { TenantId = tid, Title = "Medical Elective",         Category = "Internship",       IsVisible = true, Order = 2, Description = "Gain hands-on clinical experience working alongside Nepali medical staff in hospitals and community health centers." },
+                new VolunteerProgram { TenantId = tid, Title = "Construction Work",        Category = "Volunteering",     IsVisible = true, Order = 3, Description = "Help rebuild schools and community centers. No experience needed — our local team guides you through every task." },
+                new VolunteerProgram { TenantId = tid, Title = "Child Care",               Category = "Volunteering",     IsVisible = true, Order = 4, Description = "Work with children in orphanages and care centers, providing educational activities and emotional support." },
+                new VolunteerProgram { TenantId = tid, Title = "Women's Empowerment",      Category = "Volunteering",     IsVisible = true, Order = 5, Description = "Teach vocational skills, English and financial management to women from disadvantaged backgrounds." },
+                new VolunteerProgram { TenantId = tid, Title = "Physiotherapy Internship", Category = "Internship",       IsVisible = true, Order = 6, Description = "Help rehabilitate children and elderly patients in hospitals and community clinics across Nepal." },
+                new VolunteerProgram { TenantId = tid, Title = "Nepal Experience Program", Category = "Nepal Experience", IsVisible = true, Order = 7, Description = "Immerse yourself in Nepali culture, language and community life while contributing to meaningful projects." },
+                new VolunteerProgram { TenantId = tid, Title = "Nepali Language School",   Category = "Language School",  IsVisible = true, Order = 8, Description = "Learn the Nepali language and culture in an immersive environment with experienced local teachers." },
+                new VolunteerProgram { TenantId = tid, Title = "Summer Volunteer Program", Category = "Summer Program",   IsVisible = true, Order = 9, Description = "A short-term intensive volunteer experience perfect for students and professionals during summer break." }
+            );
+        }
+
+        // News
+        if (!_db.News.Any(n => n.TenantId == tid))
+        {
+            _db.News.AddRange(
+                new News { TenantId = tid, Title = $"{name} Welcomes New Volunteers for 2026", Category = "Announcement", Summary = "We are excited to welcome a new batch of international volunteers joining our programs this year.", Body = $"{name} is thrilled to announce the arrival of our newest cohort of international volunteers. This year we have volunteers from over 15 countries joining our teaching, medical, and construction programs across Nepal.", PublishedAt = DateTime.UtcNow.AddDays(-5) },
+                new News { TenantId = tid, Title = "New School Built in Sindhupalchok",         Category = "Impact",        Summary = "Thanks to our volunteers, a new school has been completed in the earthquake-affected Sindhupalchok district.", Body = "After months of hard work by our dedicated volunteers and local community members, we are proud to announce the completion of a new school building in Sindhupalchok. The school will serve over 200 children.", PublishedAt = DateTime.UtcNow.AddDays(-15) },
+                new News { TenantId = tid, Title = "Medical Camp Reaches 500 Patients",         Category = "Health",        Summary = "Our volunteer doctors and nurses provided free medical care to over 500 patients in rural Nepal.", Body = "Our recent medical camp in the remote hills of Nepal was a tremendous success. Volunteer doctors, nurses and medical students provided free consultations and treatments to over 500 patients.", PublishedAt = DateTime.UtcNow.AddDays(-30) }
+            );
+        }
+
+        // Tours
+        if (!_db.Tours.Any(t => t.TenantId == tid))
+        {
+            _db.Tours.AddRange(
+                new Tour { TenantId = tid, Title = "Everest Base Camp Trek",   Destination = "Nepal", Duration = "14 Days", Difficulty = "Hard",     Type = "Trekking + Volunteer", IsVisible = true, Order = 1, Description = "Trek to the base of the world's highest mountain while contributing to local communities along the way." },
+                new Tour { TenantId = tid, Title = "Annapurna Circuit",        Destination = "Nepal", Duration = "12 Days", Difficulty = "Moderate", Type = "Trekking",             IsVisible = true, Order = 2, Description = "One of the world's greatest treks, circling the Annapurna massif through diverse landscapes and cultures." },
+                new Tour { TenantId = tid, Title = "Kathmandu Cultural Tour",  Destination = "Nepal", Duration = "5 Days",  Difficulty = "Easy",     Type = "Tour",                 IsVisible = true, Order = 3, Description = "Explore the ancient temples, palaces and vibrant streets of Kathmandu Valley." },
+                new Tour { TenantId = tid, Title = "Pokhara & Poon Hill Trek", Destination = "Nepal", Duration = "8 Days",  Difficulty = "Moderate", Type = "Tour + Volunteer",     IsVisible = true, Order = 4, Description = "Combine the stunning beauty of Pokhara with a trek to Poon Hill for breathtaking Himalayan sunrise views." },
+                new Tour { TenantId = tid, Title = "Chitwan Jungle Safari",    Destination = "Nepal", Duration = "4 Days",  Difficulty = "Easy",     Type = "Tour",                 IsVisible = true, Order = 5, Description = "Experience Nepal's incredible wildlife in Chitwan National Park." }
+            );
+        }
+
+        // Testimonials
+        if (!_db.Testimonials.Any(t => t.TenantId == tid))
+        {
+            _db.Testimonials.AddRange(
+                new Testimonial { TenantId = tid, Name = "Sarah Johnson",    Country = "United Kingdom", Message = "An absolutely life-changing experience. The children were so eager to learn and the local team was incredibly supportive.", IsVisible = true },
+                new Testimonial { TenantId = tid, Name = "Marcus Weber",     Country = "Germany",        Message = "As a medical student, this placement gave me invaluable hands-on experience. Working in a resource-limited setting taught me so much.", IsVisible = true },
+                new Testimonial { TenantId = tid, Name = "Emma Thompson",    Country = "Australia",      Message = "I built a school with my own hands. Seeing the children use the classroom we constructed was the most rewarding moment of my life.", IsVisible = true },
+                new Testimonial { TenantId = tid, Name = "Carlos Rodriguez", Country = "Spain",          Message = "The Nepal Experience Program was perfect. I learned the language, made lifelong friends and truly understood Nepali culture.", IsVisible = true },
+                new Testimonial { TenantId = tid, Name = "Yuki Tanaka",      Country = "Japan",          Message = "Working with the children was deeply moving. Despite language barriers, we connected through play and laughter.", IsVisible = true }
+            );
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
     public async Task ProvisionAsync(Tenant tenant)
     {
         var tid  = tenant.Id;
@@ -129,6 +187,52 @@ public class TenantProvisioningService
             new Faq { TenantId = tid, Question = "How long can I volunteer?",            Answer = "We offer flexible durations from 2 weeks to 3 months.",                                                                                           Order = 3, IsVisible = true },
             new Faq { TenantId = tid, Question = "What is included in the program fee?", Answer = "The fee includes accommodation, meals, airport pickup, orientation, program placement, 24/7 local support, and a certificate of completion.",     Order = 4, IsVisible = true },
             new Faq { TenantId = tid, Question = "Do I need to speak Nepali?",           Answer = "No, English is widely spoken in our programs.",                                                                                                   Order = 5, IsVisible = true }
+        );
+
+        // -----------------------------------------------------------------------
+        // Default Programs
+        // -----------------------------------------------------------------------
+        _db.Programs.AddRange(
+            new VolunteerProgram { TenantId = tid, Title = "Teaching Volunteer",        Category = "Volunteering", IsVisible = true, Order = 1, Description = "Teach English, Math and Science to children in schools across Nepal. Make a real difference in the lives of students who need quality education.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Medical Elective",          Category = "Internship",   IsVisible = true, Order = 2, Description = "Gain hands-on clinical experience working alongside Nepali medical staff in hospitals and community health centers.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Construction Work",         Category = "Volunteering", IsVisible = true, Order = 3, Description = "Help rebuild schools and community centers. No experience needed — our local team guides you through every task.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Child Care",                Category = "Volunteering", IsVisible = true, Order = 4, Description = "Work with children in orphanages and care centers, providing educational activities and emotional support.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Women's Empowerment",       Category = "Volunteering", IsVisible = true, Order = 5, Description = "Teach vocational skills, English and financial management to women from disadvantaged backgrounds.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Physiotherapy Internship",  Category = "Internship",   IsVisible = true, Order = 6, Description = "Help rehabilitate children and elderly patients in hospitals and community clinics across Nepal.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Nepal Experience Program",  Category = "Nepal Experience", IsVisible = true, Order = 7, Description = "Immerse yourself in Nepali culture, language and community life while contributing to meaningful projects.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Nepali Language School",    Category = "Language School",  IsVisible = true, Order = 8, Description = "Learn the Nepali language and culture in an immersive environment with experienced local teachers.", ImageUrl = "" },
+            new VolunteerProgram { TenantId = tid, Title = "Summer Volunteer Program",  Category = "Summer Program",   IsVisible = true, Order = 9, Description = "A short-term intensive volunteer experience perfect for students and professionals during summer break.", ImageUrl = "" }
+        );
+
+        // -----------------------------------------------------------------------
+        // Default News
+        // -----------------------------------------------------------------------
+        _db.News.AddRange(
+            new News { TenantId = tid, Title = $"{name} Welcomes New Volunteers for 2026", Category = "Announcement", Summary = "We are excited to welcome a new batch of international volunteers joining our programs this year.", Body = $"{name} is thrilled to announce the arrival of our newest cohort of international volunteers. This year we have volunteers from over 15 countries joining our teaching, medical, and construction programs across Nepal. Their dedication and passion continue to inspire our local communities.", PublishedAt = DateTime.UtcNow.AddDays(-5) },
+            new News { TenantId = tid, Title = "New School Built in Sindhupalchok",         Category = "Impact",        Summary = "Thanks to our volunteers, a new school has been completed in the earthquake-affected Sindhupalchok district.", Body = "After months of hard work by our dedicated volunteers and local community members, we are proud to announce the completion of a new school building in Sindhupalchok. The school will serve over 200 children who previously had to travel long distances for education.", PublishedAt = DateTime.UtcNow.AddDays(-15) },
+            new News { TenantId = tid, Title = "Medical Camp Reaches 500 Patients",         Category = "Health",        Summary = "Our volunteer doctors and nurses provided free medical care to over 500 patients in rural Nepal.", Body = "Our recent medical camp in the remote hills of Nepal was a tremendous success. Volunteer doctors, nurses and medical students provided free consultations, medicines and basic treatments to over 500 patients who have limited access to healthcare facilities.", PublishedAt = DateTime.UtcNow.AddDays(-30) }
+        );
+
+        // -----------------------------------------------------------------------
+        // Default Tours
+        // -----------------------------------------------------------------------
+        _db.Tours.AddRange(
+            new Tour { TenantId = tid, Title = "Everest Base Camp Trek",      Destination = "Nepal", Duration = "14 Days", Difficulty = "Hard",     Type = "Trekking + Volunteer", IsVisible = true, Order = 1, Description = "Trek to the base of the world's highest mountain while contributing to local communities along the way. An unforgettable adventure combining trekking and volunteering." },
+            new Tour { TenantId = tid, Title = "Annapurna Circuit",           Destination = "Nepal", Duration = "12 Days", Difficulty = "Moderate", Type = "Trekking",             IsVisible = true, Order = 2, Description = "One of the world's greatest treks, circling the Annapurna massif through diverse landscapes, cultures and climates." },
+            new Tour { TenantId = tid, Title = "Kathmandu Cultural Tour",     Destination = "Nepal", Duration = "5 Days",  Difficulty = "Easy",     Type = "Tour",                 IsVisible = true, Order = 3, Description = "Explore the ancient temples, palaces and vibrant streets of Kathmandu Valley. Visit UNESCO World Heritage Sites and experience authentic Nepali culture." },
+            new Tour { TenantId = tid, Title = "Pokhara & Poon Hill Trek",    Destination = "Nepal", Duration = "8 Days",  Difficulty = "Moderate", Type = "Tour + Volunteer",     IsVisible = true, Order = 4, Description = "Combine the stunning beauty of Pokhara with a trek to Poon Hill for breathtaking Himalayan sunrise views, plus a day of community volunteering." },
+            new Tour { TenantId = tid, Title = "Chitwan Jungle Safari",       Destination = "Nepal", Duration = "4 Days",  Difficulty = "Easy",     Type = "Tour",                 IsVisible = true, Order = 5, Description = "Experience Nepal's incredible wildlife in Chitwan National Park. Spot rhinos, elephants, crocodiles and if lucky, the elusive Bengal tiger." }
+        );
+
+        // -----------------------------------------------------------------------
+        // Default Testimonials
+        // -----------------------------------------------------------------------
+        _db.Testimonials.AddRange(
+            new Testimonial { TenantId = tid, Name = "Sarah Johnson",    Country = "United Kingdom", Message = "An absolutely life-changing experience. The children were so eager to learn and the local team was incredibly supportive. I came to give but received so much more in return.", IsVisible = true },
+            new Testimonial { TenantId = tid, Name = "Marcus Weber",     Country = "Germany",        Message = "As a medical student, this placement gave me invaluable hands-on experience I could never get at home. Working in a resource-limited setting taught me so much about adaptability and compassion.", IsVisible = true },
+            new Testimonial { TenantId = tid, Name = "Emma Thompson",    Country = "Australia",      Message = "I built a school with my own hands. Seeing the children use the classroom we constructed was the most rewarding moment of my life. Highly recommend to anyone wanting to make a real impact.", IsVisible = true },
+            new Testimonial { TenantId = tid, Name = "Carlos Rodriguez", Country = "Spain",          Message = "The Nepal Experience Program was perfect for me. I learned the language, made lifelong friends and truly understood Nepali culture. The organization was professional and caring throughout.", IsVisible = true },
+            new Testimonial { TenantId = tid, Name = "Yuki Tanaka",      Country = "Japan",          Message = "Working with the children at the care center was deeply moving. Despite language barriers, we connected through play and laughter. This experience has changed my perspective on life forever.", IsVisible = true }
         );
 
         await _db.SaveChangesAsync();

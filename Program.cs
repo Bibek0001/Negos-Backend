@@ -196,6 +196,12 @@ try
                 var provisioning = scope.ServiceProvider.GetRequiredService<TenantProvisioningService>();
                 await provisioning.ProvisionAsync(tenant);
             }
+            else
+            {
+                // Tenant has menus but may be missing programs/news/tours/testimonials
+                var provisioning = scope.ServiceProvider.GetRequiredService<TenantProvisioningService>();
+                await provisioning.SeedContentIfMissingAsync(tenant);
+            }
         }
 
         // Ensure tenant admin account exists with correct password

@@ -162,13 +162,13 @@ try
         using var migrationDb = new AppDbContext(migrationOptions.Options);
         logger.LogInformation("Starting database migration...");
         migrationDb.Database.Migrate();
+        logger.LogInformation("Migration completed successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "Database migration failed. Verify connection string.");
-        throw;
+        logger.LogCritical(ex, "Database migration failed — app continues with hardcoded login.");
+        // Non-fatal: app starts, hardcoded credentials still work
     }
-    logger.LogInformation("Migration completed successfully.");
 
     // -----------------------------------------------------------------------
     // Seed default tenants (3 tenants for the platform demo)

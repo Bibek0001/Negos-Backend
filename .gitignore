@@ -1,0 +1,18 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+logs/
+
+## Uploads (user-uploaded images — don't commit)
+wwwroot/uploads/
+
+## Secrets — never commit these
+appsettings.Production.json
+
+## OS
+.DS_Store
+Thumbs.db

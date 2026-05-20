@@ -1,0 +1,6 @@
+@Diyalo.Api_HostAddress = http://localhost:5252
+
+GET {{Diyalo.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -53,9 +53,22 @@ var useSqlite   = !usePostgres && (
 // Convert postgres:// URL format to Npgsql connection string format
 if (usePostgres && (connStr.StartsWith("postgres://") || connStr.StartsWith("postgresql://")))
 {
-    var uri = new Uri(connStr.Replace("postgresql://", "postgres://"));
-    var userInfo = uri.UserInfo.Split(':');
-    connStr = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    try
+    {
+        // Normalize to postgres:// for Uri parsing
+        var normalized = connStr.Replace("postgresql://", "postgres://");
+        var uri = new Uri(normalized);
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var password = Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : "");
+        var username = Uri.UnescapeDataString(userInfo[0]);
+        var database = uri.AbsolutePath.TrimStart('/');
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        connStr = $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+    }
+    catch
+    {
+        // If URL parsing fails, use as-is and let Npgsql handle it
+    }
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>

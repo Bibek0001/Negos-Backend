@@ -51,23 +51,36 @@ var useSqlite   = !usePostgres && (
                  || connStr.EndsWith(".sqlite",  StringComparison.OrdinalIgnoreCase));
 
 // Convert postgres:// URL format to Npgsql connection string format
+// Uses regex to safely handle passwords with special characters like @
 if (usePostgres && (connStr.StartsWith("postgres://") || connStr.StartsWith("postgresql://")))
 {
     try
     {
-        // Normalize to postgres:// for Uri parsing
-        var normalized = connStr.Replace("postgresql://", "postgres://");
-        var uri = new Uri(normalized);
-        var userInfo = uri.UserInfo.Split(':', 2);
-        var password = Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : "");
-        var username = Uri.UnescapeDataString(userInfo[0]);
-        var database = uri.AbsolutePath.TrimStart('/');
-        var port = uri.Port > 0 ? uri.Port : 5432;
-        connStr = $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        // Pattern: postgres://username:password@host:port/database
+        // The password may contain @ so we match from the last @ before host
+        var withoutScheme = System.Text.RegularExpressions.Regex.Replace(connStr, @"^postgres(ql)?://", "");
+        // Find last @ to split userinfo from host
+        var lastAt = withoutScheme.LastIndexOf('@');
+        var userInfo = withoutScheme.Substring(0, lastAt);
+        var hostPart = withoutScheme.Substring(lastAt + 1);
+        var colonInUser = userInfo.IndexOf(':');
+        var username = colonInUser >= 0 ? userInfo.Substring(0, colonInUser) : userInfo;
+        var password = colonInUser >= 0 ? userInfo.Substring(colonInUser + 1) : "";
+        // Parse host:port/database
+        var slashIdx = hostPart.IndexOf('/');
+        var hostPort = slashIdx >= 0 ? hostPart.Substring(0, slashIdx) : hostPart;
+        var database = slashIdx >= 0 ? hostPart.Substring(slashIdx + 1).Split('?')[0] : "postgres";
+        var colonInHost = hostPort.LastIndexOf(':');
+        var host = colonInHost >= 0 ? hostPort.Substring(0, colonInHost) : hostPort;
+        var port = colonInHost >= 0 ? hostPort.Substring(colonInHost + 1) : "5432";
+        // Decode URL-encoded characters
+        username = Uri.UnescapeDataString(username);
+        password = Uri.UnescapeDataString(password);
+        connStr = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
     }
-    catch
+    catch (Exception ex)
     {
-        // If URL parsing fails, use as-is and let Npgsql handle it
+        Console.WriteLine($"Warning: Could not parse PostgreSQL URL: {ex.Message}. Using as-is.");
     }
 }
 

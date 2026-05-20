@@ -86,9 +86,15 @@ if (usePostgres && (connStr.StartsWith("postgres://") || connStr.StartsWith("pos
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if      (usePostgres) options.UseNpgsql(connStr);
-    else if (useSqlite)   options.UseSqlite(connStr);
-    else                  options.UseSqlServer(connStr);
+    if (usePostgres)
+    {
+        options.UseNpgsql(connStr, npgsql =>
+        {
+            npgsql.EnableRetryOnFailure(3);
+        });
+    }
+    else if (useSqlite) options.UseSqlite(connStr);
+    else                options.UseSqlServer(connStr);
 });
 
 // ---------------------------------------------------------------------------
@@ -153,6 +159,7 @@ try
         logger.LogCritical(ex, "Database migration failed. Verify connection string.");
         throw; // Let it crash so we can see the real error in logs
     }
+    logger.LogInformation("Migration completed successfully.");
 
     // -----------------------------------------------------------------------
     // Seed default tenants (3 tenants for the platform demo)

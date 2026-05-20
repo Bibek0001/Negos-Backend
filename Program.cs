@@ -155,12 +155,10 @@ try
 
     try
     {
-        // Use raw connection string from environment for migrations
-        var rawConnStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
         var migrationOptions = new DbContextOptionsBuilder<AppDbContext>();
-        if (usePostgres) migrationOptions.UseNpgsql(rawConnStr);
-        else if (useSqlite) migrationOptions.UseSqlite(rawConnStr);
-        else migrationOptions.UseSqlServer(rawConnStr);
+        if (usePostgres) migrationOptions.UseNpgsql(connStr);
+        else if (useSqlite) migrationOptions.UseSqlite(connStr);
+        else migrationOptions.UseSqlServer(connStr);
         using var migrationDb = new AppDbContext(migrationOptions.Options);
         logger.LogInformation("Starting database migration...");
         migrationDb.Database.Migrate();

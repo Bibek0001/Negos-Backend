@@ -90,7 +90,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         var origins = builder.Configuration["AllowedOrigins"]?.Split(',')
-            ?? new[] { "http://localhost:5173" };
+            ?? new[] { "http://localhost:5173", "https://volunternegos.netlify.app" };
         policy.WithOrigins(origins)
               .AllowAnyHeader()
               .AllowAnyMethod();

@@ -153,11 +153,22 @@ try
     var db     = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    try { db.Database.Migrate(); }
+    try
+    {
+        // Use raw connection string from environment for migrations
+        var rawConnStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
+        var migrationOptions = new DbContextOptionsBuilder<AppDbContext>();
+        if (usePostgres) migrationOptions.UseNpgsql(rawConnStr);
+        else if (useSqlite) migrationOptions.UseSqlite(rawConnStr);
+        else migrationOptions.UseSqlServer(rawConnStr);
+        using var migrationDb = new AppDbContext(migrationOptions.Options);
+        logger.LogInformation("Starting database migration...");
+        migrationDb.Database.Migrate();
+    }
     catch (Exception ex)
     {
         logger.LogCritical(ex, "Database migration failed. Verify connection string.");
-        throw; // Let it crash so we can see the real error in logs
+        throw;
     }
     logger.LogInformation("Migration completed successfully.");
 

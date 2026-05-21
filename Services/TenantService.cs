@@ -83,8 +83,17 @@ public class TenantService
     private static string ExtractSubdomain(string host)
     {
         var hostOnly = host.Split(':')[0];
-        if (hostOnly == "localhost" || System.Net.IPAddress.TryParse(hostOnly, out _))
+
+        // Treat these as no-subdomain hosts — fall back to first active tenant
+        if (hostOnly == "localhost" ||
+            System.Net.IPAddress.TryParse(hostOnly, out _) ||
+            hostOnly.EndsWith(".onrender.com") ||
+            hostOnly.EndsWith(".netlify.app") ||
+            hostOnly.EndsWith(".fly.dev") ||
+            hostOnly.EndsWith(".railway.app") ||
+            hostOnly.EndsWith(".up.railway.app"))
             return string.Empty;
+
         var parts = hostOnly.Split('.');
         return parts.Length >= 3 ? parts[0] : string.Empty;
     }

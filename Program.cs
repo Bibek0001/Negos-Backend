@@ -160,10 +160,15 @@ try
         logger.LogInformation("Setting up database...");
         if (usePostgres || useSqlite)
         {
+            // Use a direct (non-pooler) connection for DDL if available
+            var setupConnStr = builder.Configuration.GetConnectionString("SetupConnection") ?? connStr;
             logger.LogInformation("Creating tables via raw SQL for PostgreSQL...");
             try
             {
-                db.Database.ExecuteSqlRaw(@"
+                var setupOptions = new DbContextOptionsBuilder<AppDbContext>();
+                setupOptions.UseNpgsql(setupConnStr);
+                using var setupDb = new AppDbContext(setupOptions.Options);
+                setupDb.Database.ExecuteSqlRaw(@"
                     CREATE TABLE IF NOT EXISTS ""Tenants"" (
                         ""Id"" SERIAL PRIMARY KEY,
                         ""Subdomain"" VARCHAR(450) NOT NULL,

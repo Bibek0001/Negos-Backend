@@ -160,35 +160,156 @@ try
         logger.LogInformation("Setting up database...");
         if (usePostgres || useSqlite)
         {
-            logger.LogInformation("Dropping all existing tables for clean setup...");
+            logger.LogInformation("Creating tables via raw SQL for PostgreSQL...");
             try
             {
-                // Drop all tables in correct order (respecting FK constraints)
                 db.Database.ExecuteSqlRaw(@"
-                    DROP TABLE IF EXISTS ""ContactMessages"" CASCADE;
-                    DROP TABLE IF EXISTS ""Applications"" CASCADE;
-                    DROP TABLE IF EXISTS ""MenuItems"" CASCADE;
-                    DROP TABLE IF EXISTS ""SiteSettings"" CASCADE;
-                    DROP TABLE IF EXISTS ""HeroSlides"" CASCADE;
-                    DROP TABLE IF EXISTS ""Faqs"" CASCADE;
-                    DROP TABLE IF EXISTS ""Testimonials"" CASCADE;
-                    DROP TABLE IF EXISTS ""Tours"" CASCADE;
-                    DROP TABLE IF EXISTS ""News"" CASCADE;
-                    DROP TABLE IF EXISTS ""Programs"" CASCADE;
-                    DROP TABLE IF EXISTS ""AdminUsers"" CASCADE;
-                    DROP TABLE IF EXISTS ""Tenants"" CASCADE;
-                    DROP TABLE IF EXISTS ""__EFMigrationsHistory"" CASCADE;
-                ");
-                logger.LogInformation("All tables dropped.");
-            }
-            catch (Exception dropEx)
-            {
-                logger.LogWarning(dropEx, "Drop tables warning (may not exist yet) — continuing.");
-            }
+                    CREATE TABLE IF NOT EXISTS ""Tenants"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""Subdomain"" VARCHAR(450) NOT NULL,
+                        ""Name"" TEXT NOT NULL,
+                        ""Email"" TEXT NOT NULL,
+                        ""IsActive"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""CreatedAt"" TIMESTAMP NOT NULL DEFAULT NOW()
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Tenants_Subdomain"" ON ""Tenants""(""Subdomain"");
 
-            logger.LogInformation("Creating tables via EnsureCreated...");
-            db.Database.EnsureCreated();
-            logger.LogInformation("EnsureCreated completed.");
+                    CREATE TABLE IF NOT EXISTS ""AdminUsers"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL DEFAULT 0,
+                        ""Username"" TEXT NOT NULL,
+                        ""PasswordHash"" TEXT NOT NULL,
+                        ""Role"" TEXT NOT NULL DEFAULT 'Admin'
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_AdminUsers_TenantId"" ON ""AdminUsers""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""Programs"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Title"" TEXT NOT NULL,
+                        ""Description"" TEXT NOT NULL,
+                        ""ImageUrl"" TEXT,
+                        ""Category"" TEXT NOT NULL DEFAULT 'Volunteering',
+                        ""IsVisible"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Order"" INT NOT NULL DEFAULT 0
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_Programs_TenantId"" ON ""Programs""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""News"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Title"" TEXT NOT NULL,
+                        ""Summary"" TEXT NOT NULL,
+                        ""Body"" TEXT NOT NULL,
+                        ""ImageUrl"" TEXT,
+                        ""Category"" TEXT NOT NULL DEFAULT '',
+                        ""PublishedAt"" TIMESTAMP NOT NULL DEFAULT NOW()
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_News_TenantId"" ON ""News""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""Tours"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Title"" TEXT NOT NULL,
+                        ""Destination"" TEXT NOT NULL,
+                        ""Duration"" TEXT NOT NULL,
+                        ""Difficulty"" TEXT NOT NULL,
+                        ""Type"" TEXT NOT NULL,
+                        ""ImageUrl"" TEXT,
+                        ""Description"" TEXT NOT NULL,
+                        ""IsVisible"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Order"" INT NOT NULL DEFAULT 0
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_Tours_TenantId"" ON ""Tours""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""Testimonials"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Name"" TEXT NOT NULL,
+                        ""Country"" TEXT NOT NULL,
+                        ""Message"" TEXT NOT NULL,
+                        ""ImageUrl"" TEXT,
+                        ""IsVisible"" BOOLEAN NOT NULL DEFAULT TRUE
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_Testimonials_TenantId"" ON ""Testimonials""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""Faqs"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Question"" TEXT NOT NULL,
+                        ""Answer"" TEXT NOT NULL,
+                        ""Order"" INT NOT NULL DEFAULT 0,
+                        ""IsVisible"" BOOLEAN NOT NULL DEFAULT TRUE
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_Faqs_TenantId"" ON ""Faqs""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""HeroSlides"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Badge"" TEXT NOT NULL,
+                        ""Title"" TEXT NOT NULL,
+                        ""Highlight"" TEXT NOT NULL,
+                        ""Subtitle"" TEXT NOT NULL,
+                        ""ImageUrl"" TEXT,
+                        ""IsVisible"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Order"" INT NOT NULL DEFAULT 0
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_HeroSlides_TenantId"" ON ""HeroSlides""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""MenuItems"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Label"" TEXT NOT NULL,
+                        ""Url"" TEXT NOT NULL,
+                        ""IsVisible"" BOOLEAN NOT NULL DEFAULT TRUE,
+                        ""Order"" INT NOT NULL DEFAULT 0,
+                        ""ParentId"" INT
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_MenuItems_TenantId"" ON ""MenuItems""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""SiteSettings"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Key"" VARCHAR(450) NOT NULL,
+                        ""Value"" TEXT NOT NULL
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SiteSettings_TenantId_Key"" ON ""SiteSettings""(""TenantId"", ""Key"");
+
+                    CREATE TABLE IF NOT EXISTS ""Applications"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Name"" TEXT NOT NULL,
+                        ""Email"" TEXT NOT NULL,
+                        ""Phone"" TEXT NOT NULL,
+                        ""Country"" TEXT NOT NULL,
+                        ""Program"" TEXT NOT NULL,
+                        ""StartDate"" TEXT,
+                        ""Duration"" TEXT,
+                        ""Message"" TEXT NOT NULL,
+                        ""SubmittedAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                        ""Status"" TEXT NOT NULL DEFAULT 'Pending'
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_Applications_TenantId"" ON ""Applications""(""TenantId"");
+
+                    CREATE TABLE IF NOT EXISTS ""ContactMessages"" (
+                        ""Id"" SERIAL PRIMARY KEY,
+                        ""TenantId"" INT NOT NULL,
+                        ""Name"" TEXT NOT NULL,
+                        ""Email"" TEXT NOT NULL,
+                        ""Subject"" TEXT NOT NULL,
+                        ""Message"" TEXT NOT NULL,
+                        ""SentAt"" TIMESTAMP NOT NULL DEFAULT NOW(),
+                        ""IsRead"" BOOLEAN NOT NULL DEFAULT FALSE
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_ContactMessages_TenantId"" ON ""ContactMessages""(""TenantId"");
+                ");
+                logger.LogInformation("All tables created successfully.");
+            }
+            catch (Exception sqlEx)
+            {
+                logger.LogCritical(sqlEx, "Raw SQL table creation failed.");
+                throw;
+            }
         }
         else
         {

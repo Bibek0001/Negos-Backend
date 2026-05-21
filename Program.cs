@@ -160,17 +160,35 @@ try
         logger.LogInformation("Setting up database...");
         if (usePostgres || useSqlite)
         {
-            // Drop the EF migrations history table if it exists from a previous
-            // SQL Server migration attempt — it blocks EnsureCreated
+            logger.LogInformation("Dropping all existing tables for clean setup...");
             try
             {
-                db.Database.ExecuteSqlRaw(
-                    "DROP TABLE IF EXISTS \"__EFMigrationsHistory\"");
+                // Drop all tables in correct order (respecting FK constraints)
+                db.Database.ExecuteSqlRaw(@"
+                    DROP TABLE IF EXISTS ""ContactMessages"" CASCADE;
+                    DROP TABLE IF EXISTS ""Applications"" CASCADE;
+                    DROP TABLE IF EXISTS ""MenuItems"" CASCADE;
+                    DROP TABLE IF EXISTS ""SiteSettings"" CASCADE;
+                    DROP TABLE IF EXISTS ""HeroSlides"" CASCADE;
+                    DROP TABLE IF EXISTS ""Faqs"" CASCADE;
+                    DROP TABLE IF EXISTS ""Testimonials"" CASCADE;
+                    DROP TABLE IF EXISTS ""Tours"" CASCADE;
+                    DROP TABLE IF EXISTS ""News"" CASCADE;
+                    DROP TABLE IF EXISTS ""Programs"" CASCADE;
+                    DROP TABLE IF EXISTS ""AdminUsers"" CASCADE;
+                    DROP TABLE IF EXISTS ""Tenants"" CASCADE;
+                    DROP TABLE IF EXISTS ""__EFMigrationsHistory"" CASCADE;
+                ");
+                logger.LogInformation("All tables dropped.");
             }
-            catch { /* ignore — table may not exist */ }
+            catch (Exception dropEx)
+            {
+                logger.LogWarning(dropEx, "Drop tables warning (may not exist yet) — continuing.");
+            }
 
-            // Create all tables from the current model (PostgreSQL-native types)
+            logger.LogInformation("Creating tables via EnsureCreated...");
             db.Database.EnsureCreated();
+            logger.LogInformation("EnsureCreated completed.");
         }
         else
         {

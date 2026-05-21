@@ -160,7 +160,16 @@ try
         logger.LogInformation("Setting up database...");
         if (usePostgres || useSqlite)
         {
-            db.Database.EnsureDeleted();
+            // Drop the EF migrations history table if it exists from a previous
+            // SQL Server migration attempt — it blocks EnsureCreated
+            try
+            {
+                db.Database.ExecuteSqlRaw(
+                    "DROP TABLE IF EXISTS \"__EFMigrationsHistory\"");
+            }
+            catch { /* ignore — table may not exist */ }
+
+            // Create all tables from the current model (PostgreSQL-native types)
             db.Database.EnsureCreated();
         }
         else

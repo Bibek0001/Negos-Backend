@@ -3,10 +3,6 @@ using Diyalo.Api.Services;
 
 namespace Diyalo.Api.Controllers;
 
-/// <summary>
-/// Base controller that resolves the current tenant on every request.
-/// All tenant-scoped controllers inherit from this.
-/// </summary>
 [ApiController]
 public abstract class TenantBaseController : ControllerBase
 {
@@ -17,10 +13,26 @@ public abstract class TenantBaseController : ControllerBase
         _tenantService = tenantService;
     }
 
-    /// <summary>Resolves and returns the current TenantId from the request host.</summary>
     protected async Task<int> GetTenantIdAsync()
     {
         var tenant = await _tenantService.GetCurrentTenantAsync();
         return tenant.Id;
+    }
+
+    /// <summary>
+    /// Safe version — returns -1 instead of throwing if tenant not found.
+    /// Use for public endpoints that should return empty data gracefully.
+    /// </summary>
+    protected async Task<int> GetTenantIdSafeAsync()
+    {
+        try
+        {
+            var tenant = await _tenantService.GetCurrentTenantAsync();
+            return tenant.Id;
+        }
+        catch
+        {
+            return -1;
+        }
     }
 }

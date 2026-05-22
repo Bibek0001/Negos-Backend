@@ -70,15 +70,30 @@ public class PlatformController : ControllerBase
         return Ok(result);
     }
 
-    // SUPER ADMIN ONLY — get ALL platform menu items (including hidden)
+    // SUPER ADMIN ONLY — get ALL platform menu items (including hidden), nested
     [Authorize(Policy = "SuperAdmin")]
     [HttpGet("menuitems/all")]
     public async Task<IActionResult> GetAllMenuItems()
     {
-        return Ok(await _db.MenuItems
+        var all = await _db.MenuItems
             .Where(m => m.TenantId == 0)
             .OrderBy(m => m.Order)
-            .ToListAsync());
+            .ToListAsync();
+
+        // Return nested structure (same shape as public endpoint but includes hidden items)
+        var result = all
+            .Where(m => m.ParentId == null)
+            .Select(parent => new
+            {
+                parent.Id, parent.Label, parent.Url, parent.IsVisible, parent.Order, parent.ParentId,
+                subItems = all
+                    .Where(c => c.ParentId == parent.Id)
+                    .OrderBy(c => c.Order)
+                    .Select(c => new { c.Id, c.Label, c.Url, c.IsVisible, c.Order, c.ParentId })
+                    .ToList()
+            });
+
+        return Ok(result);
     }
 
     // SUPER ADMIN ONLY — update a platform menu item

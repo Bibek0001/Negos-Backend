@@ -16,7 +16,8 @@ public class ProgramsController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetVisible()
     {
-        var tid = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(Array.Empty<object>());
         return Ok(await _db.Programs
             .Where(p => p.TenantId == tid && p.IsVisible)
             .OrderBy(p => p.Order)

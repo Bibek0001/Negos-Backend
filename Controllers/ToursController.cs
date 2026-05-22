@@ -16,7 +16,8 @@ public class ToursController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetVisible()
     {
-        var tid = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(Array.Empty<object>());
         return Ok(await _db.Tours
             .Where(t => t.TenantId == tid && t.IsVisible)
             .OrderBy(t => t.Order)
@@ -26,7 +27,8 @@ public class ToursController : TenantBaseController
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var tid  = await GetTenantIdAsync();
+        var tid  = await GetTenantIdSafeAsync();
+        if (tid < 0) return NotFound();
         var tour = await _db.Tours.FirstOrDefaultAsync(t => t.Id == id && t.TenantId == tid);
         return tour == null ? NotFound() : Ok(tour);
     }

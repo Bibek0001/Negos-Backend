@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Diyalo.Api.Data;
@@ -6,6 +7,7 @@ namespace Diyalo.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = "SuperAdmin")]
     public class MigrateController : ControllerBase
     {
         private readonly AppDbContext _dbContext;

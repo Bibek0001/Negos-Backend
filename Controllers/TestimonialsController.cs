@@ -16,7 +16,8 @@ public class TestimonialsController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetVisible()
     {
-        var tid = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(Array.Empty<object>());
         return Ok(await _db.Testimonials
             .Where(t => t.TenantId == tid && t.IsVisible)
             .ToListAsync());

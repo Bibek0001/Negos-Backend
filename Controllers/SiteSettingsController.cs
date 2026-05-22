@@ -16,7 +16,8 @@ public class SiteSettingsController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var tid      = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(new Dictionary<string, string>());
         var settings = await _db.SiteSettings.Where(s => s.TenantId == tid).ToListAsync();
         return Ok(settings.ToDictionary(s => s.Key, s => s.Value));
     }

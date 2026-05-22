@@ -16,7 +16,8 @@ public class FaqsController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetVisible()
     {
-        var tid = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(Array.Empty<object>());
         return Ok(await _db.Faqs
             .Where(f => f.TenantId == tid && f.IsVisible)
             .OrderBy(f => f.Order)

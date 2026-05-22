@@ -16,7 +16,8 @@ public class NewsController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var tid = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(Array.Empty<object>());
         return Ok(await _db.News
             .Where(n => n.TenantId == tid)
             .OrderByDescending(n => n.PublishedAt)
@@ -26,7 +27,8 @@ public class NewsController : TenantBaseController
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var tid = await GetTenantIdAsync();
+        var tid  = await GetTenantIdSafeAsync();
+        if (tid < 0) return NotFound();
         var news = await _db.News.FirstOrDefaultAsync(n => n.Id == id && n.TenantId == tid);
         return news == null ? NotFound() : Ok(news);
     }

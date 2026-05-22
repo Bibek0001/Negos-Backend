@@ -16,30 +16,23 @@ public class MenuItemsController : TenantBaseController
     [HttpGet]
     public async Task<IActionResult> GetVisible()
     {
-        var tid = await GetTenantIdAsync();
+        var tid = await GetTenantIdSafeAsync();
+        if (tid < 0) return Ok(Array.Empty<object>());
         var all = await _db.MenuItems
             .Where(m => m.TenantId == tid)
             .OrderBy(m => m.Order)
             .ToListAsync();
-
-        // Return top-level visible items, each with their visible children embedded
         var result = all
             .Where(m => m.ParentId == null && m.IsVisible)
             .Select(parent => new
             {
-                parent.Id,
-                parent.Label,
-                parent.Url,
-                parent.IsVisible,
-                parent.Order,
-                parent.ParentId,
+                parent.Id, parent.Label, parent.Url, parent.IsVisible, parent.Order, parent.ParentId,
                 subItems = all
                     .Where(c => c.ParentId == parent.Id && c.IsVisible)
                     .OrderBy(c => c.Order)
                     .Select(c => new { c.Id, c.Label, c.Url, c.IsVisible, c.Order, c.ParentId })
                     .ToList()
             });
-
         return Ok(result);
     }
 

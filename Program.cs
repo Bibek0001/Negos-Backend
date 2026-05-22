@@ -360,7 +360,7 @@ try
         var adminHash = BCrypt.Net.BCrypt.HashPassword(t.AdminPass);
         var admin = db.AdminUsers.FirstOrDefault(u => u.Username == t.AdminUser && u.TenantId == tenant.Id);
         if (admin == null) db.AdminUsers.Add(new AdminUser { Username = t.AdminUser, PasswordHash = adminHash, TenantId = tenant.Id, Role = "Admin" });
-        else { admin.PasswordHash = adminHash; admin.Role = "Admin"; admin.TenantId = tenant.Id; }
+        // Do NOT overwrite existing password — allow it to be changed
     }
     db.SaveChanges();
 
@@ -373,23 +373,30 @@ try
     const string backupHash  = "$2a$11$EewzvCHCXARXpWrEFtkVWuew7MyK8bS0qOCma96ZCY7tozIGNc4Dm";
     var primary = db.AdminUsers.FirstOrDefault(u => u.Username == "Negos");
     if (primary == null) db.AdminUsers.Add(new AdminUser { Username = "Negos", PasswordHash = primaryHash, TenantId = 0, Role = "SuperAdmin" });
-    else { primary.PasswordHash = primaryHash; primary.Role = "SuperAdmin"; primary.TenantId = 0; }
+    else { primary.Role = "SuperAdmin"; primary.TenantId = 0; } // keep existing password
     var backup = db.AdminUsers.FirstOrDefault(u => u.Username == "NegosBk");
     if (backup == null) db.AdminUsers.Add(new AdminUser { Username = "NegosBk", PasswordHash = backupHash, TenantId = 0, Role = "SuperAdmin" });
-    else { backup.PasswordHash = backupHash; backup.Role = "SuperAdmin"; backup.TenantId = 0; }
+    else { backup.Role = "SuperAdmin"; backup.TenantId = 0; } // keep existing password
     db.SaveChanges();
 
-    // Tenant admin accounts
+    // Tenant admin accounts — only create if missing, never overwrite passwords
     foreach (var ta in new[] {
         new { Username = "admin_diyalo",    Password = "Diyalo@123",    TenantId = 1 },
         new { Username = "admin_volunteer", Password = "Volunteer@123", TenantId = 2 },
         new { Username = "admin_nepalhelp", Password = "NepalHelp@123", TenantId = 3 },
     })
     {
-        var h = BCrypt.Net.BCrypt.HashPassword(ta.Password);
         var ex2 = db.AdminUsers.FirstOrDefault(u => u.Username == ta.Username);
-        if (ex2 == null) db.AdminUsers.Add(new AdminUser { Username = ta.Username, PasswordHash = h, TenantId = ta.TenantId, Role = "Admin" });
-        else { ex2.PasswordHash = h; ex2.Role = "Admin"; ex2.TenantId = ta.TenantId; }
+        if (ex2 == null)
+        {
+            var h = BCrypt.Net.BCrypt.HashPassword(ta.Password);
+            db.AdminUsers.Add(new AdminUser { Username = ta.Username, PasswordHash = h, TenantId = ta.TenantId, Role = "Admin" });
+        }
+        else
+        {
+            // Only fix role/tenantId — never touch the password
+            ex2.Role = "Admin"; ex2.TenantId = ta.TenantId;
+        }
     }
     db.SaveChanges();
 
@@ -436,24 +443,97 @@ try
     }
 
     // Platform site settings (TenantId=0)
+    // Full set of keys used by PlatformSettings.jsx and SiteContent.jsx
+    var platformDefaults = new Dictionary<string, string>
+    {
+        // Branding
+        ["platformName"]        = "Negos",
+        ["platformTagline"]     = "The SaaS platform for volunteer organizations",
+        ["platformLogoUrl"]     = "/logo.png",
+        // Colors
+        ["primaryColor"]        = "#e63946",
+        ["secondaryColor"]      = "#457b9d",
+        ["navbarColor"]         = "#ffffff",
+        ["footerColor"]         = "#1d3557",
+        ["buttonColor"]         = "#e63946",
+        ["adminColor"]          = "#1d3557",
+        // Contact
+        ["address"]             = "Kathmandu, Nepal",
+        ["phone"]               = "+977 9800000000",
+        ["email"]               = "contact@negos.org",
+        ["officeHours"]         = "Sun - Fri: 9am - 5pm",
+        // Social
+        ["facebook"]            = "https://facebook.com",
+        ["instagram"]           = "https://instagram.com",
+        ["linkedin"]            = "https://linkedin.com",
+        ["youtube"]             = "https://youtube.com",
+        ["tiktok"]              = "https://tiktok.com",
+        // Stats
+        ["stat_volunteers"]     = "500+",
+        ["stat_communities"]    = "20+",
+        ["stat_livesImpacted"]  = "1000+",
+        ["stat_yearsActive"]    = "10+",
+        // Section visibility
+        ["section_programs"]    = "true",
+        ["section_news"]        = "true",
+        ["section_tours"]       = "true",
+        ["section_testimonials"]= "true",
+        ["section_faqs"]        = "true",
+        // Video
+        ["videoUrl"]            = "",
+        ["videoTitle"]          = "Watch This Video To Know How Exciting Our Programs Are!",
+        ["videoSubtitle"]       = "A glimpse of the volunteering journey in Nepal",
+        // Hero section (used by PlatformSettings → Hero Content tab & SiteContent → Homepage tab)
+        ["hero_badge"]          = "Volunteer Platform",
+        ["hero_title"]          = "Power Your Organization.",
+        ["hero_highlight"]      = "With Negos.",
+        ["hero_subtitle"]       = "Negos is the all-in-one SaaS platform for volunteer organizations in Nepal. Manage programs, volunteers, news and more — all in one place.",
+        // Intro section (SiteContent → Homepage tab)
+        ["intro_description"]   = "is a Nepal-based, Nepali-run grassroots organization that provides volunteers with incredible experiences while making a real difference in local communities.",
+        ["intro_mission"]       = "to encourage and invite as many international volunteers as possible to help Nepal grow, develop and thrive — while giving volunteers a life-changing experience.",
+        // Platform intro (SiteContent → Homepage tab)
+        ["platform_intro"]      = "Negos provides volunteer organizations with a complete digital platform to manage their programs, volunteers, news, tours and more — all from one easy-to-use admin panel.",
+        // About page (SiteContent → Sections tab)
+        ["about_intro"]         = "is a Nepal-based, Nepali-run grassroots organization dedicated to connecting international volunteers with communities that need them most.",
+        ["about_mission"]       = "Our mission is to create meaningful volunteer experiences that benefit both the volunteers and the communities they serve across Nepal.",
+        ["about_approach"]      = "We do this by partnering with local schools, hospitals, and community organizations to place volunteers where they can make the greatest impact.",
+        // Homepage section titles (SiteContent → Sections tab)
+        ["section_programs_title"]      = "Our Programs",
+        ["section_programs_subtitle"]   = "Choose from a wide range of volunteer and internship programs across Nepal",
+        ["section_news_title"]          = "Latest News",
+        ["section_news_subtitle"]       = "Stay up to date with our latest stories, impact reports and announcements",
+        ["section_testimonials_title"]  = "What Volunteers Say",
+        ["section_testimonials_subtitle"] = "Hear from the volunteers who have experienced our programs first-hand",
+        ["section_tours_title"]         = "Tours & Treks",
+        ["section_tours_subtitle"]      = "Combine your volunteer experience with an unforgettable adventure in Nepal",
+        ["section_combine_title"]       = "Combine Volunteering & Travel",
+        ["section_combine_subtitle"]    = "Make the most of your time in Nepal by combining a volunteer placement with a guided tour or trek",
+    };
+
     if (!db.SiteSettings.Any(s => s.TenantId == 0))
     {
-        foreach (var kv in new Dictionary<string,string>{
-            ["platformName"]="Negos",["platformTagline"]="The SaaS platform for volunteer organizations",
-            ["platformLogoUrl"]="/logo.png",["primaryColor"]="#e63946",["secondaryColor"]="#457b9d",
-            ["navbarColor"]="#ffffff",["footerColor"]="#1d3557",["buttonColor"]="#e63946",["adminColor"]="#1d3557",
-            ["address"]="Kathmandu, Nepal",["phone"]="+977 9800000000",["email"]="contact@negos.org",
-            ["officeHours"]="Sun - Fri: 9am - 5pm",["facebook"]="https://facebook.com",
-            ["instagram"]="https://instagram.com",["linkedin"]="https://linkedin.com",
-            ["youtube"]="https://youtube.com",["tiktok"]="https://tiktok.com",
-            ["stat_volunteers"]="500+",["stat_communities"]="20+",["stat_livesImpacted"]="1000+",["stat_yearsActive"]="10+",
-            ["section_programs"]="true",["section_news"]="true",["section_tours"]="true",
-            ["section_testimonials"]="true",["section_faqs"]="true",
-            ["videoUrl"]="",["videoTitle"]="Watch This Video To Know How Exciting Our Programs Are!",
-            ["videoSubtitle"]="A glimpse of the volunteering journey in Nepal",
-        })
-            db.SiteSettings.Add(new SiteSetting{TenantId=0,Key=kv.Key,Value=kv.Value});
+        // First-time seed — insert all keys
+        foreach (var kv in platformDefaults)
+            db.SiteSettings.Add(new SiteSetting { TenantId = 0, Key = kv.Key, Value = kv.Value });
         db.SaveChanges();
+    }
+    else
+    {
+        // Backfill — add any keys that are missing (e.g. after an upgrade)
+        var existingKeys = db.SiteSettings
+            .Where(s => s.TenantId == 0)
+            .Select(s => s.Key)
+            .ToHashSet();
+        var added = false;
+        foreach (var kv in platformDefaults)
+        {
+            if (!existingKeys.Contains(kv.Key))
+            {
+                db.SiteSettings.Add(new SiteSetting { TenantId = 0, Key = kv.Key, Value = kv.Value });
+                added = true;
+            }
+        }
+        if (added) db.SaveChanges();
     }
 
     logger.LogInformation("Seeding completed successfully.");

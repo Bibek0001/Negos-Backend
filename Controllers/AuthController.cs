@@ -14,19 +14,6 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly AuthService  _auth;
 
-    // ---------------------------------------------------------------------------
-    // Hardcoded fallback credentials — work even if the database is unavailable.
-    // These are always checked first before hitting the DB.
-    // ---------------------------------------------------------------------------
-    private static readonly (string Username, string Password, string Role, int TenantId)[] _hardcoded = new[]
-    {
-        ("Negos",           "Negos@123",      "SuperAdmin", 0),
-        ("NegosBk",         "NegosBk@2026",   "SuperAdmin", 0),
-        ("admin_diyalo",    "Diyalo@123",      "Admin",      1),
-        ("admin_volunteer", "Volunteer@123",   "Admin",      2),
-        ("admin_nepalhelp", "NepalHelp@123",   "Admin",      3),
-    };
-
     public AuthController(AppDbContext db, AuthService auth)
     {
         _db   = db;
@@ -37,32 +24,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest req)
     {
         // -----------------------------------------------------------------------
-        // 1. Check hardcoded credentials first — works without DB
-        // -----------------------------------------------------------------------
-        var hardcoded = _hardcoded.FirstOrDefault(h =>
-            h.Username == req.Username && h.Password == req.Password);
-
-        if (hardcoded != default)
-        {
-            var hardcodedUser = new AdminUser
-            {
-                Id           = hardcoded.TenantId == 0 ? 9999 : hardcoded.TenantId + 100,
-                Username     = hardcoded.Username,
-                PasswordHash = string.Empty,
-                Role         = hardcoded.Role,
-                TenantId     = hardcoded.TenantId,
-            };
-            return Ok(new
-            {
-                token    = _auth.GenerateToken(hardcodedUser),
-                role     = hardcodedUser.Role,
-                tenantId = hardcodedUser.TenantId,
-                username = hardcodedUser.Username,
-            });
-        }
-
-        // -----------------------------------------------------------------------
-        // 2. Fall back to database lookup
+        // Database lookup — BCrypt-hashed passwords only
         // -----------------------------------------------------------------------
         try
         {
@@ -88,17 +50,30 @@ public class AuthController : ControllerBase
         }
         catch
         {
-            // DB unavailable — hardcoded check already failed above
-            return Unauthorized(new { message = "Invalid username or password" });
+            return StatusCode(503, new { message = "Service temporarily unavailable. Please try again." });
         }
     }
 
     [Authorize]
     [HttpPost("change-password")]
-    public IActionResult ChangePassword()
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
     {
-        return StatusCode(403, new { message = "Admin credentials are fixed and cannot be changed." });
+        var usernameClaim = User.Identity?.Name;
+        if (string.IsNullOrEmpty(usernameClaim))
+            return Unauthorized();
+
+        var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == usernameClaim);
+        if (user == null)
+            return NotFound();
+
+        if (!BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { message = "Current password is incorrect." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Password changed successfully." });
     }
 }
 
 public record LoginRequest(string Username, string Password);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);

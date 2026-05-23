@@ -124,21 +124,49 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ---------------------------------------------------------------------------
-// CORS
+// CORS — supports exact origins + wildcard subdomain matching
+// Set AllowedOrigins env var to comma-separated list, e.g.:
+//   https://negos.org,https://*.negos.org
 // ---------------------------------------------------------------------------
 builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var originsConfig = builder.Configuration["AllowedOrigins"];
-        if (!string.IsNullOrWhiteSpace(originsConfig) && originsConfig != "*")
+        var originsConfig = builder.Configuration["AllowedOrigins"] ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(originsConfig) || originsConfig == "*")
         {
-            var origins = originsConfig.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+            // Dev / unconfigured — allow all
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
         }
         else
         {
-            // Allow all origins (dev / initial deploy)
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            var entries = originsConfig
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            // Separate exact origins from wildcard patterns (e.g. https://*.negos.org)
+            var exactOrigins   = entries.Where(e => !e.Contains("*")).ToArray();
+            var wildcardDomains = entries
+                .Where(e => e.Contains("*."))
+                .Select(e => e.Replace("https://", "").Replace("http://", "").Replace("*.", ""))
+                .ToArray(); // e.g. ["negos.org"]
+
+            policy
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .SetIsOriginAllowed(origin =>
+                {
+                    // Exact match
+                    if (exactOrigins.Contains(origin)) return true;
+
+                    // Wildcard subdomain match — e.g. https://diyalo.negos.org
+                    try
+                    {
+                        var host = new Uri(origin).Host; // e.g. "diyalo.negos.org"
+                        return wildcardDomains.Any(domain =>
+                            host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
+                    }
+                    catch { return false; }
+                });
         }
     }));
 

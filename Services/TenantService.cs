@@ -53,9 +53,18 @@ public class TenantService
 
         // -----------------------------------------------------------------------
         // 2. Public request — resolve from subdomain
+        //    Priority: Host header subdomain → X-Tenant header → first active tenant
         // -----------------------------------------------------------------------
         var host      = ctx?.Request.Host.Host ?? string.Empty;
         var subdomain = ExtractSubdomain(host);
+
+        // Fallback: if no subdomain in Host (e.g. Netlify/Render deploy URLs),
+        // check the X-Tenant header sent by the frontend
+        if (string.IsNullOrEmpty(subdomain))
+        {
+            subdomain = ctx?.Request.Headers["X-Tenant"].FirstOrDefault() ?? string.Empty;
+            subdomain = subdomain.Trim().ToLower();
+        }
 
         Tenant? tenant;
 

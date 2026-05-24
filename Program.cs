@@ -188,8 +188,37 @@ try
         logger.LogInformation("Setting up database...");
         if (usePostgres || useSqlite)
         {
-            // Use a direct (non-pooler) connection for DDL if available
+            // Use the already-converted connection string for DDL setup
             var setupConnStr = builder.Configuration.GetConnectionString("SetupConnection") ?? connStr;
+            // If SetupConnection is also a postgres:// URL, convert it too
+            if (setupConnStr.StartsWith("postgres://") || setupConnStr.StartsWith("postgresql://"))
+            {
+                try
+                {
+                    var withoutScheme2 = System.Text.RegularExpressions.Regex.Replace(setupConnStr, @"^postgres(ql)?://", "");
+                    var lastAt2 = withoutScheme2.LastIndexOf('@');
+                    var userInfo2 = withoutScheme2.Substring(0, lastAt2);
+                    var hostPart2 = withoutScheme2.Substring(lastAt2 + 1);
+                    var colonInUser2 = userInfo2.IndexOf(':');
+                    var username2 = colonInUser2 >= 0 ? userInfo2.Substring(0, colonInUser2) : userInfo2;
+                    var password2 = colonInUser2 >= 0 ? userInfo2.Substring(colonInUser2 + 1) : "";
+                    var slashIdx2 = hostPart2.IndexOf('/');
+                    var hostPort2 = slashIdx2 >= 0 ? hostPart2.Substring(0, slashIdx2) : hostPart2;
+                    var database2 = slashIdx2 >= 0 ? hostPart2.Substring(slashIdx2 + 1).Split('?')[0] : "postgres";
+                    var colonInHost2 = hostPort2.LastIndexOf(':');
+                    var host2 = colonInHost2 >= 0 ? hostPort2.Substring(0, colonInHost2) : hostPort2;
+                    var port2 = colonInHost2 >= 0 ? hostPort2.Substring(colonInHost2 + 1) : "5432";
+                    username2 = Uri.UnescapeDataString(username2);
+                    password2 = Uri.UnescapeDataString(password2);
+                    setupConnStr = $"Host={host2};Port={port2};Database={database2};Username={username2};Password={password2};SSL Mode=Require;Trust Server Certificate=true";
+                }
+                catch { setupConnStr = connStr; }
+            }
+            else if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("SetupConnection")))
+            {
+                // No separate SetupConnection — use the already-converted main connStr
+                setupConnStr = connStr;
+            }
             logger.LogInformation("Creating tables via raw SQL for PostgreSQL...");
             try
             {

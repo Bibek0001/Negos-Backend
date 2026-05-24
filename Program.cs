@@ -160,8 +160,8 @@ try
             // Use the already-converted connection string for DDL setup
             var rawSetup   = builder.Configuration.GetConnectionString("SetupConnection");
             var setupConnStr = string.IsNullOrWhiteSpace(rawSetup)
-                ? connStr                          // no separate setup conn — use main (already converted)
-                : ConvertPostgresUrl(rawSetup);    // convert setup URL the same way
+                ? connStr
+                : ConvertPostgresUrl(rawSetup, forSetup: true);
             logger.LogInformation("Creating tables via raw SQL for PostgreSQL...");
             try
             {
@@ -555,7 +555,7 @@ app.Run();
 // Helper: convert postgres:// or postgresql:// URL → Npgsql Host= format
 // Handles URL-encoded characters (%40=@, %23=#, etc.) in passwords correctly
 // ---------------------------------------------------------------------------
-static string ConvertPostgresUrl(string url)
+static string ConvertPostgresUrl(string url, bool forSetup = false)
 {
     if (!url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
         !url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
@@ -574,7 +574,12 @@ static string ConvertPostgresUrl(string url)
         var username = Uri.UnescapeDataString(colonIdx >= 0 ? userInfo.Substring(0, colonIdx) : userInfo);
         var password = Uri.UnescapeDataString(colonIdx >= 0 ? userInfo.Substring(colonIdx + 1) : "");
 
-        return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        // Force IPv4, disable pooler reset for setup/DDL connections
+        var extra = forSetup
+            ? ";No Reset On Close=true;Pooling=false"
+            : ";No Reset On Close=true";
+
+        return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true{extra}";
     }
     catch
     {
@@ -593,7 +598,8 @@ static string ConvertPostgresUrl(string url)
             var chi      = hostPort.LastIndexOf(':');
             var host     = chi >= 0 ? hostPort.Substring(0, chi) : hostPort;
             var port     = chi >= 0 ? hostPort.Substring(chi + 1) : "5432";
-            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            var extra    = forSetup ? ";No Reset On Close=true;Pooling=false" : ";No Reset On Close=true";
+            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true{extra}";
         }
         catch { return url; }
     }

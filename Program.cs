@@ -157,11 +157,10 @@ try
         logger.LogInformation("Setting up database...");
         if (usePostgres || useSqlite)
         {
-            // Use the already-converted connection string for DDL setup
-            var rawSetup   = builder.Configuration.GetConnectionString("SetupConnection");
-            var setupConnStr = string.IsNullOrWhiteSpace(rawSetup)
-                ? connStr
-                : ConvertPostgresUrl(rawSetup, forSetup: true);
+            // Always use the main (already-converted, pooler) connection for DDL.
+            // Never use SetupConnection — it may resolve to IPv6 (Supabase direct host)
+            // which Render free tier cannot reach.
+            var setupConnStr = connStr;
             logger.LogInformation("Creating tables via raw SQL for PostgreSQL...");
             try
             {
@@ -325,10 +324,16 @@ try
     }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "Database setup failed. App starts with hardcoded login only.");
+        logger.LogCritical(ex, "Database setup failed. App will start without seeding — tables may already exist.");
     }
 
-    if (!dbReady) return; // skip seeding if DB setup failed — app still starts
+    if (!dbReady)
+    {
+        logger.LogWarning("Skipping seeding — DB setup did not complete. App is still starting.");
+        // Don't return — let the app start. Tables may already exist from a previous deploy.
+    }
+    else
+    {
 
     // Step 2: Seed tenants
     // Passwords are pre-computed BCrypt hashes — no plaintext in source code.
@@ -535,6 +540,7 @@ try
     }
 
     logger.LogInformation("Seeding completed successfully.");
+    } // end else (dbReady)
 }
 catch (Exception ex)
 {

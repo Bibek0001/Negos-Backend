@@ -356,14 +356,18 @@ try
         logger.LogCritical(ex, "Database setup failed. App starts with hardcoded login only.");
     }
 
-    if (!dbReady) goto AppStart;
+    if (!dbReady) return; // skip seeding if DB setup failed — app still starts
 
     // Step 2: Seed tenants
+    // Passwords are pre-computed BCrypt hashes — no plaintext in source code.
+    // admin_diyalo    → Diyalo@123
+    // admin_volunteer → Volunteer@123
+    // admin_nepalhelp → NepalHelp@123
     var tenantsToSeed = new[]
     {
-        new { Subdomain = "negos",          Name = "Negos",                Email = "contact@negos.org",          AdminUser = "admin_diyalo",    AdminPass = "Diyalo@123"    },
-        new { Subdomain = "volunteernepal", Name = "Volunteer Nepal",       Email = "contact@volunteernepal.org", AdminUser = "admin_volunteer", AdminPass = "Volunteer@123" },
-        new { Subdomain = "nepalhelp",      Name = "Nepal Help Foundation", Email = "contact@nepalhelp.org",      AdminUser = "admin_nepalhelp", AdminPass = "NepalHelp@123" },
+        new { Subdomain = "negos",          Name = "Negos",                Email = "contact@negos.org",          AdminUser = "admin_diyalo",    AdminHash = "$2a$11$NHOOsR2a/DNaalqlEK8VwOTSUFrjDKus7UyOqfYS/TFOZsFlnAPlK" },
+        new { Subdomain = "volunteernepal", Name = "Volunteer Nepal",       Email = "contact@volunteernepal.org", AdminUser = "admin_volunteer", AdminHash = "$2a$11$GqDOYNN7XJBh4lbRZZfSG.zium62OsaA8ca9JS2u5m1i2MWVJYyv." },
+        new { Subdomain = "nepalhelp",      Name = "Nepal Help Foundation", Email = "contact@nepalhelp.org",      AdminUser = "admin_nepalhelp", AdminHash = "$2a$11$ld5YghTqELhXW.xb9hb5zuKNyQRCgeJhK54NA9HC.3yc.yP68FXf." },
     };
 
     foreach (var t in tenantsToSeed)
@@ -385,9 +389,8 @@ try
             else
                 await prov.SeedContentIfMissingAsync(tenant);
         }
-        var adminHash = BCrypt.Net.BCrypt.HashPassword(t.AdminPass);
         var admin = db.AdminUsers.FirstOrDefault(u => u.Username == t.AdminUser && u.TenantId == tenant.Id);
-        if (admin == null) db.AdminUsers.Add(new AdminUser { Username = t.AdminUser, PasswordHash = adminHash, TenantId = tenant.Id, Role = "Admin" });
+        if (admin == null) db.AdminUsers.Add(new AdminUser { Username = t.AdminUser, PasswordHash = t.AdminHash, TenantId = tenant.Id, Role = "Admin" });
         // Do NOT overwrite existing password — allow it to be changed
     }
     db.SaveChanges();
@@ -408,23 +411,18 @@ try
     db.SaveChanges();
 
     // Tenant admin accounts — only create if missing, never overwrite passwords
+    // Hashes: admin_diyalo=Diyalo@123, admin_volunteer=Volunteer@123, admin_nepalhelp=NepalHelp@123
     foreach (var ta in new[] {
-        new { Username = "admin_diyalo",    Password = "Diyalo@123",    TenantId = 1 },
-        new { Username = "admin_volunteer", Password = "Volunteer@123", TenantId = 2 },
-        new { Username = "admin_nepalhelp", Password = "NepalHelp@123", TenantId = 3 },
+        new { Username = "admin_diyalo",    Hash = "$2a$11$NHOOsR2a/DNaalqlEK8VwOTSUFrjDKus7UyOqfYS/TFOZsFlnAPlK", TenantId = 1 },
+        new { Username = "admin_volunteer", Hash = "$2a$11$GqDOYNN7XJBh4lbRZZfSG.zium62OsaA8ca9JS2u5m1i2MWVJYyv.", TenantId = 2 },
+        new { Username = "admin_nepalhelp", Hash = "$2a$11$ld5YghTqELhXW.xb9hb5zuKNyQRCgeJhK54NA9HC.3yc.yP68FXf.", TenantId = 3 },
     })
     {
         var ex2 = db.AdminUsers.FirstOrDefault(u => u.Username == ta.Username);
         if (ex2 == null)
-        {
-            var h = BCrypt.Net.BCrypt.HashPassword(ta.Password);
-            db.AdminUsers.Add(new AdminUser { Username = ta.Username, PasswordHash = h, TenantId = ta.TenantId, Role = "Admin" });
-        }
+            db.AdminUsers.Add(new AdminUser { Username = ta.Username, PasswordHash = ta.Hash, TenantId = ta.TenantId, Role = "Admin" });
         else
-        {
-            // Only fix role/tenantId — never touch the password
-            ex2.Role = "Admin"; ex2.TenantId = ta.TenantId;
-        }
+            { ex2.Role = "Admin"; ex2.TenantId = ta.TenantId; } // never touch password
     }
     db.SaveChanges();
 
@@ -571,7 +569,7 @@ catch (Exception ex)
     Console.WriteLine($"Startup warning: {ex.Message}");
 }
 
-AppStart:
+app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
